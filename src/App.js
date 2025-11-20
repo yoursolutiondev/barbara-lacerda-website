@@ -836,7 +836,7 @@ const App = () => {
           <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
             <div>
               <h3 className="text-2xl font-serif mb-4">Bárbara Lacerda</h3>
-              <p className="text-gray-400">Seja uma Mulher BELA</p>
+              <p className="text-gray-400">Seja uma Mulher maluca</p>
             </div>
             <div>
               <h4 className="font-semibold mb-4">Contacto</h4>
