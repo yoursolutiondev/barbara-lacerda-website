@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Calendar, Clock, User, Phone, Mail, MapPin, Facebook, Instagram, Menu, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Simulação Supabase - Em produção, usar createClient do @supabase/supabase-js
@@ -46,12 +46,17 @@ const App = () => {
   const [selectedProfessional, setSelectedProfessional] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
-  const [clientInfo, setClientInfo] = useState({ name: '', phone: '', email: '', notes: '' });
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  // Estado do formulário separado e memoizado
+  const [formName, setFormName] = useState('');
+  const [formPhone, setFormPhone] = useState('');
+  const [formEmail, setFormEmail] = useState('');
+  const [formNotes, setFormNotes] = useState('');
+
   // Gerar horários disponíveis
-  const generateTimeSlots = () => {
+  const generateTimeSlots = useCallback(() => {
     const slots = [];
     const startHour = 10;
     const endHour = 19;
@@ -62,10 +67,10 @@ const App = () => {
       }
     }
     return slots;
-  };
+  }, []);
 
   // Gerar calendário
-  const generateCalendar = () => {
+  const generateCalendar = useCallback(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -81,20 +86,19 @@ const App = () => {
       const date = new Date(year, month, day);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const isAvailable = date >= today && date.getDay() !== 0 && date.getDay() !== 1; // Não disponível Dom/Seg
+      const isAvailable = date >= today && date.getDay() !== 0 && date.getDay() !== 1;
       days.push({ day, date, isAvailable });
     }
     return days;
-  };
+  }, [currentMonth]);
 
-  const handleBooking = () => {
-    // Em produção, enviar para Supabase
+  const handleBooking = useCallback(() => {
     console.log('Booking:', {
       service: selectedService,
       professional: selectedProfessional,
       date: selectedDate,
       time: selectedTime,
-      client: clientInfo
+      client: { name: formName, phone: formPhone, email: formEmail, notes: formNotes }
     });
     setBookingSuccess(true);
     setTimeout(() => {
@@ -104,10 +108,13 @@ const App = () => {
       setSelectedProfessional(null);
       setSelectedDate(null);
       setSelectedTime(null);
-      setClientInfo({ name: '', phone: '', email: '', notes: '' });
+      setFormName('');
+      setFormPhone('');
+      setFormEmail('');
+      setFormNotes('');
       setCurrentPage('home');
     }, 3000);
-  };
+  }, [selectedService, selectedProfessional, selectedDate, selectedTime, formName, formPhone, formEmail, formNotes]);
 
   const NavBar = () => (
     <nav className="bg-white shadow-md fixed w-full top-0 z-50">
@@ -120,7 +127,6 @@ const App = () => {
             <span className="font-serif text-xl text-gray-800 hidden sm:block">Bárbara Lacerda</span>
           </div>
           
-          {/* Desktop Menu */}
           <div className="hidden md:flex space-x-6">
             <button onClick={() => setCurrentPage('home')} className="text-gray-700 hover:text-pink-500 transition">Início</button>
             <button onClick={() => setCurrentPage('about')} className="text-gray-700 hover:text-pink-500 transition">Sobre</button>
@@ -137,14 +143,12 @@ const App = () => {
             Marque Já
           </button>
 
-          {/* Mobile Menu Button */}
           <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden">
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-t">
           <div className="px-2 pt-2 pb-3 space-y-1">
@@ -163,7 +167,6 @@ const App = () => {
 
   const HomePage = () => (
     <div className="min-h-screen">
-      {/* Hero Section */}
       <div className="relative h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 via-white to-pink-50">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0zNiAxOGMzLjMxNCAwIDYgMi42ODYgNiA2cy0yLjY4NiA2LTYgNi02LTIuNjg2LTYtNiAyLjY4Ni02IDYtNnoiIHN0cm9rZT0iI2ZjYmRkMyIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9nPjwvc3ZnPg==')] opacity-20"></div>
         <div className="relative text-center px-4 z-10">
@@ -182,7 +185,6 @@ const App = () => {
         </div>
       </div>
 
-      {/* Features Section */}
       <div className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-4xl font-serif text-center mb-16 text-gray-800">Porquê Escolher-nos</h2>
@@ -411,7 +413,6 @@ const App = () => {
           <h1 className="text-5xl font-serif mb-4 text-center text-gray-800">Marcar Sessão</h1>
           <p className="text-center text-gray-600 mb-12">Selecione o serviço, profissional e horário desejado</p>
 
-          {/* Progress Steps */}
           <div className="flex justify-between mb-12 max-w-2xl mx-auto">
             {[1, 2, 3, 4].map(step => (
               <div key={step} className="flex items-center">
@@ -424,7 +425,6 @@ const App = () => {
           </div>
 
           <div className="bg-white rounded-2xl shadow-xl p-8">
-            {/* Step 1: Select Service */}
             {bookingStep === 1 && (
               <div>
                 <h2 className="text-2xl font-semibold mb-6 text-gray-800">1. Selecione o Serviço</h2>
@@ -454,7 +454,6 @@ const App = () => {
               </div>
             )}
 
-            {/* Step 2: Select Professional */}
             {bookingStep === 2 && (
               <div>
                 <h2 className="text-2xl font-semibold mb-6 text-gray-800">2. Selecione a Profissional</h2>
@@ -487,12 +486,10 @@ const App = () => {
               </div>
             )}
 
-            {/* Step 3: Select Date & Time */}
             {bookingStep === 3 && (
               <div>
                 <h2 className="text-2xl font-semibold mb-6 text-gray-800">3. Selecione Data e Hora</h2>
                 
-                {/* Calendar */}
                 <div className="mb-6">
                   <div className="flex justify-between items-center mb-4">
                     <button
@@ -542,7 +539,6 @@ const App = () => {
                   </div>
                 </div>
 
-                {/* Time Slots */}
                 {selectedDate && (
                   <div>
                     <h3 className="font-semibold mb-4 text-gray-800">Horários Disponíveis</h3>
@@ -576,7 +572,6 @@ const App = () => {
               </div>
             )}
 
-            {/* Step 4: Client Information */}
             {bookingStep === 4 && (
               <div>
                 <h2 className="text-2xl font-semibold mb-6 text-gray-800">4. Seus Dados</h2>
@@ -596,8 +591,8 @@ const App = () => {
                     <label className="block text-sm font-semibold mb-2 text-gray-700">Nome Completo *</label>
                     <input
                       type="text"
-                      value={clientInfo.name}
-                      onChange={(e) => setClientInfo(prev => ({ ...prev, name: e.target.value }))}
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
                       placeholder="Seu nome"
                     />
@@ -606,8 +601,8 @@ const App = () => {
                     <label className="block text-sm font-semibold mb-2 text-gray-700">Telefone *</label>
                     <input
                       type="tel"
-                      value={clientInfo.phone}
-                      onChange={(e) => setClientInfo(prev => ({ ...prev, phone: e.target.value }))}
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
                       placeholder="+351 XXX XXX XXX"
                     />
@@ -616,8 +611,8 @@ const App = () => {
                     <label className="block text-sm font-semibold mb-2 text-gray-700">Email *</label>
                     <input
                       type="email"
-                      value={clientInfo.email}
-                      onChange={(e) => setClientInfo(prev => ({ ...prev, email: e.target.value }))}
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
                       placeholder="seu@email.com"
                     />
@@ -625,8 +620,8 @@ const App = () => {
                   <div>
                     <label className="block text-sm font-semibold mb-2 text-gray-700">Observações (opcional)</label>
                     <textarea
-                      value={clientInfo.notes}
-                      onChange={(e) => setClientInfo(prev => ({ ...prev, notes: e.target.value }))}
+                      value={formNotes}
+                      onChange={(e) => setFormNotes(e.target.value)}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
                       rows="3"
                       placeholder="Alguma informação adicional..."
@@ -643,7 +638,7 @@ const App = () => {
                   </button>
                   <button
                     onClick={handleBooking}
-                    disabled={!clientInfo.name || !clientInfo.phone || !clientInfo.email}
+                    disabled={!formName || !formPhone || !formEmail}
                     className="flex-1 bg-gradient-to-r from-pink-400 to-pink-600 text-white py-3 rounded-lg hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Confirmar Marcação
@@ -670,7 +665,6 @@ const App = () => {
         {currentPage === 'booking' && <BookingPage />}
       </div>
 
-      {/* Fixed WhatsApp Button */}
       <a
         href="https://wa.me/351935279765"
         target="_blank"
@@ -680,7 +674,6 @@ const App = () => {
         <Phone size={28} />
       </a>
 
-      {/* Footer */}
       <footer className="bg-gray-900 text-white py-12">
         <div className="max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
@@ -707,5 +700,7 @@ const App = () => {
     </div>
   );
 };
+
+export default App;
 
 export default App;
