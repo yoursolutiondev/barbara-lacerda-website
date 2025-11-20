@@ -44,12 +44,81 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
+  const [errors, setErrors] = useState({});
+
+  // Validação de email
+  const validateEmail = useCallback((email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }, []);
+
+  // Validação de telefone português
+  const validatePhone = useCallback((phone) => {
+    // Remove espaços e caracteres especiais
+    const cleanPhone = phone.replace(/\s|-|\(|\)/g, '');
+    // Aceita: +351XXXXXXXXX, 351XXXXXXXXX, ou 9XXXXXXXX
+    const phoneRegex = /^(\+351|351)?[9][0-9]{8}$/;
+    return phoneRegex.test(cleanPhone);
+  }, []);
+
+  // Validar campos em tempo real
+  const handleEmailChange = useCallback((value) => {
+    setEmail(value);
+    if (value.trim() && !validateEmail(value)) {
+      setErrors(prev => ({ ...prev, email: 'Email inválido' }));
+    } else {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.email;
+        return newErrors;
+      });
+    }
+  }, [validateEmail]);
+
+  const handlePhoneChange = useCallback((value) => {
+    setPhone(value);
+    if (value.trim() && !validatePhone(value)) {
+      setErrors(prev => ({ ...prev, phone: 'Telefone inválido. Use formato: +351 XXX XXX XXX' }));
+    } else {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.phone;
+        return newErrors;
+      });
+    }
+  }, [validatePhone]);
 
   const handleSubmit = useCallback(() => {
-    onSubmit({ name, phone, email, notes });
-  }, [name, phone, email, notes, onSubmit]);
+    // Validação final antes de submeter
+    const newErrors = {};
+    
+    if (!name.trim()) {
+      newErrors.name = 'Nome é obrigatório';
+    }
+    
+    if (!phone.trim()) {
+      newErrors.phone = 'Telefone é obrigatório';
+    } else if (!validatePhone(phone)) {
+      newErrors.phone = 'Telefone inválido';
+    }
+    
+    if (!email.trim()) {
+      newErrors.email = 'Email é obrigatório';
+    } else if (!validateEmail(email)) {
+      newErrors.email = 'Email inválido';
+    }
 
-  const isValid = name.trim() && phone.trim() && email.trim();
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    onSubmit({ name, phone, email, notes });
+  }, [name, phone, email, notes, validateEmail, validatePhone, onSubmit]);
+
+  const isValid = name.trim() && phone.trim() && email.trim() && 
+                  validateEmail(email) && validatePhone(phone) && 
+                  Object.keys(errors).length === 0;
 
   return (
     <div>
@@ -72,32 +141,43 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
+            className={`w-full p-3 border-2 rounded-lg focus:outline-none ${
+              errors.name ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-pink-500'
+            }`}
             placeholder="Seu nome"
             autoComplete="name"
           />
+          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
         </div>
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700">Telefone *</label>
           <input
             type="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
-            placeholder="+351 XXX XXX XXX"
+            onChange={(e) => handlePhoneChange(e.target.value)}
+            className={`w-full p-3 border-2 rounded-lg focus:outline-none ${
+              errors.phone ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-pink-500'
+            }`}
+            placeholder="+351 935 279 765"
             autoComplete="tel"
           />
+          {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+          {!errors.phone && phone && <p className="text-green-600 text-sm mt-1">✓ Telefone válido</p>}
         </div>
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700">Email *</label>
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
+            onChange={(e) => handleEmailChange(e.target.value)}
+            className={`w-full p-3 border-2 rounded-lg focus:outline-none ${
+              errors.email ? 'border-red-500 focus:border-red-500' : 'border-gray-200 focus:border-pink-500'
+            }`}
             placeholder="seu@email.com"
             autoComplete="email"
           />
+          {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+          {!errors.email && email && <p className="text-green-600 text-sm mt-1">✓ Email válido</p>}
         </div>
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-700">Observações (opcional)</label>
