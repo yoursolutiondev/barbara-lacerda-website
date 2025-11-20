@@ -1,45 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { Calendar, Clock, User, Phone, Mail, MapPin, Facebook, Instagram, Menu, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
-
-// Simulação Supabase
-const supabaseSimulation = {
-  services: [
-    { id: 1, name: 'Corte Feminino', duration: 60, price: '35€', description: 'Corte personalizado e modelado' },
-    { id: 2, name: 'Coloração Completa', duration: 120, price: '70€', description: 'Coloração total com produtos premium' },
-    { id: 3, name: 'Madeixas / Balaiagem', duration: 180, price: '90€', description: 'Técnicas modernas de iluminação' },
-    { id: 4, name: 'Extensão Capilar', duration: 240, price: 'Sob consulta', description: 'Mega hair com fios premium' },
-    { id: 5, name: 'Tratamento Capilar', duration: 90, price: '50€', description: 'Hidratação profunda e reconstrução' },
-    { id: 6, name: 'Penteado / Styling', duration: 60, price: '45€', description: 'Penteados para eventos especiais' },
-    { id: 7, name: 'Manicure', duration: 45, price: '15€', description: 'Cuidado completo das unhas' },
-    { id: 8, name: 'Design de Sobrancelhas', duration: 30, price: '12€', description: 'Modelação e design profissional' },
-  ],
-  professionals: [
-    { 
-      id: 1, 
-      name: 'Bárbara Lacerda', 
-      specialty: 'Especialista em Madeixas e Coloração',
-      photo: '👩‍🦰',
-      description: 'Fundadora do salão, especialista em colorimetria e técnicas modernas'
-    },
-    { 
-      id: 2, 
-      name: 'Carla Silva', 
-      specialty: 'Cortes e Penteados',
-      photo: '👩‍🦱',
-      description: 'Especialista em cortes modernos e penteados para eventos'
-    },
-    { 
-      id: 3, 
-      name: 'Sara Costa', 
-      specialty: 'Estética e Sobrancelhas',
-      photo: '👩',
-      description: 'Profissional de estética, design de sobrancelhas e manicure'
-    },
-  ]
-};
+import { useBookings, useServices, useProfessionals } from './hooks';
 
 // COMPONENTE DO FORMULÁRIO ISOLADO - NÃO RE-RENDERIZA
-const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
+const ClientInfoForm = memo(({ onSubmit, onBack, booking, isSubmitting }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -54,14 +18,11 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
 
   // Validação de telefone português
   const validatePhone = useCallback((phone) => {
-    // Remove espaços e caracteres especiais
     const cleanPhone = phone.replace(/\s|-|\(|\)/g, '');
-    // Aceita: +351XXXXXXXXX, 351XXXXXXXXX, ou 9XXXXXXXX
     const phoneRegex = /^(\+351|351)?[9][0-9]{8}$/;
     return phoneRegex.test(cleanPhone);
   }, []);
 
-  // Validar campos em tempo real
   const handleEmailChange = useCallback((value) => {
     setEmail(value);
     if (value.trim() && !validateEmail(value)) {
@@ -89,7 +50,6 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
   }, [validatePhone]);
 
   const handleSubmit = useCallback(() => {
-    // Validação final antes de submeter
     const newErrors = {};
     
     if (!name.trim()) {
@@ -146,6 +106,7 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
             }`}
             placeholder="Seu nome"
             autoComplete="name"
+            disabled={isSubmitting}
           />
           {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
         </div>
@@ -160,6 +121,7 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
             }`}
             placeholder="+351 935 279 765"
             autoComplete="tel"
+            disabled={isSubmitting}
           />
           {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
           {!errors.phone && phone && <p className="text-green-600 text-sm mt-1">✓ Telefone válido</p>}
@@ -175,6 +137,7 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
             }`}
             placeholder="seu@email.com"
             autoComplete="email"
+            disabled={isSubmitting}
           />
           {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           {!errors.email && email && <p className="text-green-600 text-sm mt-1">✓ Email válido</p>}
@@ -187,6 +150,7 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
             className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
             rows="3"
             placeholder="Alguma informação adicional..."
+            disabled={isSubmitting}
           />
         </div>
       </div>
@@ -195,17 +159,18 @@ const ClientInfoForm = memo(({ onSubmit, onBack, booking }) => {
         <button
           onClick={onBack}
           type="button"
-          className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition"
+          disabled={isSubmitting}
+          className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg hover:bg-gray-300 transition disabled:opacity-50"
         >
           Voltar
         </button>
         <button
           onClick={handleSubmit}
-          disabled={!isValid}
+          disabled={!isValid || isSubmitting}
           type="button"
           className="flex-1 bg-gradient-to-r from-pink-400 to-pink-600 text-white py-3 rounded-lg hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Confirmar Marcação
+          {isSubmitting ? 'A processar...' : 'Confirmar Marcação'}
         </button>
       </div>
     </div>
@@ -223,7 +188,14 @@ const App = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [bookingError, setBookingError] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Hooks do Supabase
+  const { services, loading: servicesLoading } = useServices();
+  const { professionals, loading: professionalsLoading } = useProfessionals();
+  const { createBooking } = useBookings();
 
   const generateTimeSlots = useCallback(() => {
     const slots = [];
@@ -260,25 +232,70 @@ const App = () => {
     return days;
   }, [currentMonth]);
 
-  const handleClientInfoSubmit = useCallback((clientInfo) => {
-    console.log('Booking:', {
-      service: selectedService,
-      professional: selectedProfessional,
-      date: selectedDate,
-      time: selectedTime,
-      client: clientInfo
-    });
-    setBookingSuccess(true);
-    setTimeout(() => {
-      setBookingSuccess(false);
-      setBookingStep(1);
-      setSelectedService(null);
-      setSelectedProfessional(null);
-      setSelectedDate(null);
-      setSelectedTime(null);
-      setCurrentPage('home');
-    }, 3000);
-  }, [selectedService, selectedProfessional, selectedDate, selectedTime]);
+  const calculateEndTime = useCallback((startTime, duration) => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const startMinutes = hours * 60 + minutes;
+    const endMinutes = startMinutes + duration;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+    return `${endHours.toString().padStart(2, '0')}:${endMins.toString().padStart(2, '0')}`;
+  }, []);
+
+  const handleClientInfoSubmit = useCallback(async (clientInfo) => {
+    setIsSubmitting(true);
+    setBookingError(null);
+
+    try {
+      // Calcular hora de fim baseada na duração do serviço
+      const endTime = calculateEndTime(selectedTime, selectedService.duration);
+
+      // Formatar data no formato YYYY-MM-DD
+      const formattedDate = selectedDate.toISOString().split('T')[0];
+
+      // Preparar dados da marcação
+      const bookingData = {
+        name: clientInfo.name,
+        email: clientInfo.email,
+        phone: clientInfo.phone,
+        clientNotes: clientInfo.notes,
+        notes: clientInfo.notes,
+        professionalId: selectedProfessional.id,
+        serviceId: selectedService.id,
+        date: formattedDate,
+        startTime: selectedTime,
+        endTime: endTime
+      };
+
+      console.log('Enviando marcação:', bookingData);
+
+      // Criar marcação no Supabase
+      const result = await createBooking(bookingData);
+
+      if (result.success) {
+        console.log('Marcação criada com sucesso:', result.data);
+        setBookingSuccess(true);
+        
+        // Reset após 3 segundos
+        setTimeout(() => {
+          setBookingSuccess(false);
+          setBookingStep(1);
+          setSelectedService(null);
+          setSelectedProfessional(null);
+          setSelectedDate(null);
+          setSelectedTime(null);
+          setCurrentPage('home');
+        }, 3000);
+      } else {
+        console.error('Erro ao criar marcação:', result.error);
+        setBookingError(result.error || 'Erro ao criar marcação. Por favor, tente novamente.');
+      }
+    } catch (error) {
+      console.error('Erro inesperado:', error);
+      setBookingError('Erro inesperado. Por favor, tente novamente.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [selectedService, selectedProfessional, selectedDate, selectedTime, createBooking, calculateEndTime]);
 
   const NavBar = () => (
     <nav className="bg-white shadow-md fixed w-full top-0 z-50">
@@ -407,24 +424,33 @@ const App = () => {
       <div className="max-w-7xl mx-auto px-4">
         <h1 className="text-5xl font-serif mb-4 text-center text-gray-800">Nossos Serviços</h1>
         <p className="text-center text-gray-600 mb-16 text-lg">Tratamentos personalizados com produtos premium</p>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {supabaseSimulation.services.map(service => (
-            <div key={service.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:scale-105">
-              <div className="h-3 bg-gradient-to-r from-pink-400 to-pink-600"></div>
-              <div className="p-6">
-                <h3 className="text-2xl font-semibold mb-3 text-gray-800">{service.name}</h3>
-                <p className="text-gray-600 mb-4">{service.description}</p>
-                <div className="flex justify-between items-center pt-4 border-t">
-                  <div className="flex items-center text-gray-500">
-                    <Clock size={18} className="mr-2" />
-                    <span>{service.duration} min</span>
+        
+        {servicesLoading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+            <p className="mt-4 text-gray-600">A carregar serviços...</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {services.map(service => (
+              <div key={service.id} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:scale-105">
+                <div className="h-3 bg-gradient-to-r from-pink-400 to-pink-600"></div>
+                <div className="p-6">
+                  <h3 className="text-2xl font-semibold mb-3 text-gray-800">{service.name}</h3>
+                  <p className="text-gray-600 mb-4">{service.description}</p>
+                  <div className="flex justify-between items-center pt-4 border-t">
+                    <div className="flex items-center text-gray-500">
+                      <Clock size={18} className="mr-2" />
+                      <span>{service.duration} min</span>
+                    </div>
+                    <div className="text-2xl font-bold text-pink-600">{service.price ? `${service.price}€` : 'Sob consulta'}</div>
                   </div>
-                  <div className="text-2xl font-bold text-pink-600">{service.price}</div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        
         <div className="text-center mt-12">
           <button 
             onClick={() => setCurrentPage('booking')}
@@ -442,20 +468,28 @@ const App = () => {
       <div className="max-w-6xl mx-auto px-4">
         <h1 className="text-5xl font-serif mb-4 text-center text-gray-800">Nossa Equipa</h1>
         <p className="text-center text-gray-600 mb-16 text-lg">Profissionais altamente capacitadas e experientes</p>
-        <div className="grid md:grid-cols-3 gap-8">
-          {supabaseSimulation.professionals.map(pro => (
-            <div key={pro.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition">
-              <div className="h-48 bg-gradient-to-br from-pink-300 to-pink-500 flex items-center justify-center">
-                <span className="text-8xl">{pro.photo}</span>
+        
+        {professionalsLoading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+            <p className="mt-4 text-gray-600">A carregar equipa...</p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-8">
+            {professionals.map(pro => (
+              <div key={pro.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition">
+                <div className="h-48 bg-gradient-to-br from-pink-300 to-pink-500 flex items-center justify-center">
+                  <span className="text-8xl">{pro.photo_url || '👩'}</span>
+                </div>
+                <div className="p-6">
+                  <h3 className="text-2xl font-semibold mb-2 text-gray-800">{pro.name}</h3>
+                  <p className="text-pink-600 font-medium mb-3">{pro.specialty}</p>
+                  <p className="text-gray-600">{pro.bio}</p>
+                </div>
               </div>
-              <div className="p-6">
-                <h3 className="text-2xl font-semibold mb-2 text-gray-800">{pro.name}</h3>
-                <p className="text-pink-600 font-medium mb-3">{pro.specialty}</p>
-                <p className="text-gray-600">{pro.description}</p>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -564,7 +598,7 @@ const App = () => {
               </div>
               <h2 className="text-3xl font-serif mb-4 text-gray-800">Marcação Confirmada!</h2>
               <p className="text-gray-600 mb-2">Obrigada por escolher o nosso salão.</p>
-              <p className="text-gray-600">Receberá uma confirmação por email em breve.</p>
+              <p className="text-gray-600">A sua marcação foi registada com sucesso!</p>
             </div>
           </div>
         </div>
@@ -576,6 +610,12 @@ const App = () => {
         <div className="max-w-4xl mx-auto px-4">
           <h1 className="text-5xl font-serif mb-4 text-center text-gray-800">Marcar Sessão</h1>
           <p className="text-center text-gray-600 mb-12">Selecione o serviço, profissional e horário desejado</p>
+
+          {bookingError && (
+            <div className="max-w-2xl mx-auto mb-6 bg-red-50 border-2 border-red-200 rounded-lg p-4">
+              <p className="text-red-700 text-center">{bookingError}</p>
+            </div>
+          )}
 
           <div className="flex justify-between mb-12 max-w-2xl mx-auto">
             {[1, 2, 3, 4].map(step => (
@@ -592,55 +632,69 @@ const App = () => {
             {bookingStep === 1 && (
               <div>
                 <h2 className="text-2xl font-semibold mb-6 text-gray-800">1. Selecione o Serviço</h2>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {supabaseSimulation.services.map(service => (
-                    <button
-                      key={service.id}
-                      onClick={() => {
-                        setSelectedService(service);
-                        setBookingStep(2);
-                      }}
-                      className={`p-4 rounded-lg border-2 text-left transition ${
-                        selectedService?.id === service.id
-                          ? 'border-pink-500 bg-pink-50'
-                          : 'border-gray-200 hover:border-pink-300'
-                      }`}
-                    >
-                      <h3 className="font-semibold text-gray-800 mb-2">{service.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2">{service.description}</p>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-gray-500">{service.duration} min</span>
-                        <span className="font-bold text-pink-600">{service.price}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {servicesLoading ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+                    <p className="mt-4 text-gray-600">A carregar serviços...</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {services.map(service => (
+                      <button
+                        key={service.id}
+                        onClick={() => {
+                          setSelectedService(service);
+                          setBookingStep(2);
+                        }}
+                        className={`p-4 rounded-lg border-2 text-left transition ${
+                          selectedService?.id === service.id
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 hover:border-pink-300'
+                        }`}
+                      >
+                        <h3 className="font-semibold text-gray-800 mb-2">{service.name}</h3>
+                        <p className="text-sm text-gray-600 mb-2">{service.description}</p>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-gray-500">{service.duration} min</span>
+                          <span className="font-bold text-pink-600">{service.price ? `${service.price}€` : 'Sob consulta'}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             {bookingStep === 2 && (
               <div>
                 <h2 className="text-2xl font-semibold mb-6 text-gray-800">2. Selecione a Profissional</h2>
-                <div className="grid md:grid-cols-3 gap-4">
-                  {supabaseSimulation.professionals.map(pro => (
-                    <button
-                      key={pro.id}
-                      onClick={() => {
-                        setSelectedProfessional(pro);
-                        setBookingStep(3);
-                      }}
-                      className={`p-4 rounded-lg border-2 text-center transition ${
-                        selectedProfessional?.id === pro.id
-                          ? 'border-pink-500 bg-pink-50'
-                          : 'border-gray-200 hover:border-pink-300'
-                      }`}
-                    >
-                      <div className="text-6xl mb-3">{pro.photo}</div>
-                      <h3 className="font-semibold text-gray-800 mb-1">{pro.name}</h3>
-                      <p className="text-sm text-pink-600">{pro.specialty}</p>
-                    </button>
-                  ))}
-                </div>
+                {professionalsLoading ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+                    <p className="mt-4 text-gray-600">A carregar equipa...</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {professionals.map(pro => (
+                      <button
+                        key={pro.id}
+                        onClick={() => {
+                          setSelectedProfessional(pro);
+                          setBookingStep(3);
+                        }}
+                        className={`p-4 rounded-lg border-2 text-center transition ${
+                          selectedProfessional?.id === pro.id
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 hover:border-pink-300'
+                        }`}
+                      >
+                        <div className="text-6xl mb-3">{pro.photo_url || '👩'}</div>
+                        <h3 className="font-semibold text-gray-800 mb-1">{pro.name}</h3>
+                        <p className="text-sm text-pink-600">{pro.specialty}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <button
                   onClick={() => setBookingStep(1)}
                   className="mt-6 text-pink-600 hover:text-pink-700"
@@ -740,6 +794,7 @@ const App = () => {
               <ClientInfoForm
                 onSubmit={handleClientInfoSubmit}
                 onBack={() => setBookingStep(3)}
+                isSubmitting={isSubmitting}
                 booking={{
                   service: selectedService,
                   professional: selectedProfessional,
