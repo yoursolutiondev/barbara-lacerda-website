@@ -597,7 +597,7 @@ const App = () => {
                     <input
                       type="text"
                       value={clientInfo.name}
-                      onChange={(e) => setClientInfo({ ...clientInfo, name: e.target.value })}
+                      onChange={(e) => setClientInfo(prev => ({ ...prev, name: e.target.value }))}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
                       placeholder="Seu nome"
                     />
@@ -607,7 +607,7 @@ const App = () => {
                     <input
                       type="tel"
                       value={clientInfo.phone}
-                      onChange={(e) => setClientInfo({ ...clientInfo, phone: e.target.value })}
+                      onChange={(e) => setClientInfo(prev => ({ ...prev, phone: e.target.value }))}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
                       placeholder="+351 XXX XXX XXX"
                     />
@@ -617,7 +617,7 @@ const App = () => {
                     <input
                       type="email"
                       value={clientInfo.email}
-                      onChange={(e) => setClientInfo({ ...clientInfo, email: e.target.value })}
+                      onChange={(e) => setClientInfo(prev => ({ ...prev, email: e.target.value }))}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
                       placeholder="seu@email.com"
                     />
@@ -626,7 +626,7 @@ const App = () => {
                     <label className="block text-sm font-semibold mb-2 text-gray-700">Observações (opcional)</label>
                     <textarea
                       value={clientInfo.notes}
-                      onChange={(e) => setClientInfo({ ...clientInfo, notes: e.target.value })}
+                      onChange={(e) => setClientInfo(prev => ({ ...prev, notes: e.target.value }))}
                       className="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-pink-500 focus:outline-none"
                       rows="3"
                       placeholder="Alguma informação adicional..."
