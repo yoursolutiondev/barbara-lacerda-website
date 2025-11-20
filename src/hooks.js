@@ -2,7 +2,7 @@
 // Custom hook para gestão de marcações
 
 import { useState, useEffect } from 'react'
-import { supabase } from '../supabaseClient'
+import { supabase } from './supabaseClient'
 
 export const useBookings = () => {
   const [bookings, setBookings] = useState([])
